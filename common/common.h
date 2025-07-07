@@ -43,6 +43,7 @@ using std::shared_ptr;
 using std::unique_ptr;
 using std::make_shared;
 using std::make_unique;
+using std::to_string;
 
 // 工具函数和宏
 #define PRINT_FUNC_NAME() cout << "=== " << __FUNCTION__ << " ===" << endl
