@@ -6,7 +6,7 @@
 #include <iostream>
 #include <stack>
 #include <queue>
-#include <priority_queue>
+#include <queue>
 #include <vector>
 #include <deque>
 #include <list>

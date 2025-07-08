@@ -13,7 +13,7 @@
 #include <chrono>
 #include <random>
 #include <string>
-#include <cassert>
+#include <iomanip>#include <cassert>
 
 // 演示 vector 基本操作
 void demonstrate_basic_operations() {

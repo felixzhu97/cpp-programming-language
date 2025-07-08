@@ -133,9 +133,7 @@ void demonstrate_common_interface() {
     std::cout << "   vec.size(): " << vec.size() << "\n";
     std::cout << "   vec.max_size(): " << vec.max_size() << "\n";
     std::cout << "   vec.empty(): " << std::boolalpha << vec.empty() << "\n";
-    if constexpr (requires { vec.capacity(); }) {
-        std::cout << "   vec.capacity(): " << vec.capacity() << "\n";
-    }
+    std::cout << "   vec.capacity(): " << vec.capacity() << "\n";
     
     // 4. 迭代器
     std::cout << "\n4. 迭代器：\n";
