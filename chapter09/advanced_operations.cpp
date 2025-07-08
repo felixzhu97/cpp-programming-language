@@ -10,6 +10,101 @@
 #include <memory>
 #include <chrono>
 
+// 自定义追踪分配器
+template<typename T>
+class TrackingAllocator {
+public:
+    using value_type = T;
+    static size_t allocations;
+    static size_t deallocations;
+    static size_t bytes_allocated;
+    
+    TrackingAllocator() = default;
+    template<typename U> TrackingAllocator(const TrackingAllocator<U>&) {}
+    
+    T* allocate(size_t n) {
+        allocations++;
+        bytes_allocated += n * sizeof(T);
+        std::cout << "   分配 " << n << " 个 " << typeid(T).name() 
+                  << " (" << n * sizeof(T) << " bytes)\n";
+        return static_cast<T*>(std::malloc(n * sizeof(T)));
+    }
+    
+    void deallocate(T* p, size_t n) {
+        deallocations++;
+        std::cout << "   释放 " << n << " 个 " << typeid(T).name() 
+                  << " (" << n * sizeof(T) << " bytes)\n";
+        std::free(p);
+    }
+    
+    template<typename U>
+    bool operator==(const TrackingAllocator<U>&) const { return true; }
+};
+
+template<typename T>
+size_t TrackingAllocator<T>::allocations = 0;
+template<typename T>
+size_t TrackingAllocator<T>::deallocations = 0;
+template<typename T>
+size_t TrackingAllocator<T>::bytes_allocated = 0;
+
+// 异常安全的资源类
+class ExceptionTest {
+private:
+    int* data;
+    size_t size;
+    static int construction_count;
+    
+public:
+    ExceptionTest(size_t n) : data(new int[n]), size(n) {
+        construction_count++;
+        std::cout << "   构造 ExceptionTest #" << construction_count 
+                  << ", size=" << size << "\n";
+        
+        // 模拟构造失败
+        if (construction_count % 4 == 0) {
+            delete[] data;
+            throw std::runtime_error("构造失败");
+        }
+        
+        for (size_t i = 0; i < size; ++i) {
+            data[i] = static_cast<int>(i);
+        }
+    }
+    
+    ~ExceptionTest() {
+        std::cout << "   析构 ExceptionTest, size=" << size << "\n";
+        delete[] data;
+    }
+    
+    // 拷贝构造
+    ExceptionTest(const ExceptionTest& other) : data(new int[other.size]), size(other.size) {
+        construction_count++;
+        std::cout << "   拷贝构造 ExceptionTest #" << construction_count << "\n";
+        
+        if (construction_count % 4 == 0) {
+            delete[] data;
+            throw std::runtime_error("拷贝构造失败");
+        }
+        
+        std::copy(other.data, other.data + size, data);
+    }
+    
+    // 移动构造 (noexcept)
+    ExceptionTest(ExceptionTest&& other) noexcept 
+        : data(other.data), size(other.size) {
+        other.data = nullptr;
+        other.size = 0;
+        std::cout << "   移动构造 ExceptionTest\n";
+    }
+    
+    int get_value(size_t index) const {
+        return (index < size) ? data[index] : 0;
+    }
+};
+
+int ExceptionTest::construction_count = 0;
+
 void demonstrate_container_comparison() {
     std::cout << "\n=== 容器比较操作 ===\n";
     
@@ -141,43 +236,6 @@ void demonstrate_allocators() {
     // 自定义分配器示例
     std::cout << "\n自定义分配器:\n";
     
-    template<typename T>
-    class TrackingAllocator {
-    public:
-        using value_type = T;
-        static size_t allocations;
-        static size_t deallocations;
-        static size_t bytes_allocated;
-        
-        TrackingAllocator() = default;
-        template<typename U> TrackingAllocator(const TrackingAllocator<U>&) {}
-        
-        T* allocate(size_t n) {
-            allocations++;
-            bytes_allocated += n * sizeof(T);
-            std::cout << "   分配 " << n << " 个 " << typeid(T).name() 
-                      << " (" << n * sizeof(T) << " bytes)\n";
-            return static_cast<T*>(std::malloc(n * sizeof(T)));
-        }
-        
-        void deallocate(T* p, size_t n) {
-            deallocations++;
-            std::cout << "   释放 " << n << " 个 " << typeid(T).name() 
-                      << " (" << n * sizeof(T) << " bytes)\n";
-            std::free(p);
-        }
-        
-        template<typename U>
-        bool operator==(const TrackingAllocator<U>&) const { return true; }
-    };
-    
-    template<typename T>
-    size_t TrackingAllocator<T>::allocations = 0;
-    template<typename T>
-    size_t TrackingAllocator<T>::deallocations = 0;
-    template<typename T>
-    size_t TrackingAllocator<T>::bytes_allocated = 0;
-    
     {
         std::vector<int, TrackingAllocator<int>> tracked_vector;
         
@@ -194,63 +252,6 @@ void demonstrate_allocators() {
 
 void demonstrate_exception_safety() {
     std::cout << "\n=== 异常安全性 ===\n";
-    
-    // 异常安全的资源类
-    class ExceptionTest {
-    private:
-        int* data;
-        size_t size;
-        static int construction_count;
-        
-    public:
-        ExceptionTest(size_t n) : data(new int[n]), size(n) {
-            construction_count++;
-            std::cout << "   构造 ExceptionTest #" << construction_count 
-                      << ", size=" << size << "\n";
-            
-            // 模拟构造失败
-            if (construction_count % 4 == 0) {
-                delete[] data;
-                throw std::runtime_error("构造失败");
-            }
-            
-            for (size_t i = 0; i < size; ++i) {
-                data[i] = static_cast<int>(i);
-            }
-        }
-        
-        ~ExceptionTest() {
-            std::cout << "   析构 ExceptionTest, size=" << size << "\n";
-            delete[] data;
-        }
-        
-        // 拷贝构造
-        ExceptionTest(const ExceptionTest& other) : data(new int[other.size]), size(other.size) {
-            construction_count++;
-            std::cout << "   拷贝构造 ExceptionTest #" << construction_count << "\n";
-            
-            if (construction_count % 4 == 0) {
-                delete[] data;
-                throw std::runtime_error("拷贝构造失败");
-            }
-            
-            std::copy(other.data, other.data + size, data);
-        }
-        
-        // 移动构造 (noexcept)
-        ExceptionTest(ExceptionTest&& other) noexcept 
-            : data(other.data), size(other.size) {
-            other.data = nullptr;
-            other.size = 0;
-            std::cout << "   移动构造 ExceptionTest\n";
-        }
-        
-        int get_value(size_t index) const {
-            return (index < size) ? data[index] : 0;
-        }
-    };
-    
-    int ExceptionTest::construction_count = 0;
     
     std::cout << "强异常安全测试:\n";
     

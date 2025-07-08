@@ -13,7 +13,49 @@
 #include <chrono>
 #include <random>
 #include <string>
-#include <iomanip>#include <cassert>
+#include <iomanip>
+#include <cassert>
+
+// 简单的统计分配器 - 移到全局作用域
+template<typename T>
+class StatAllocator {
+public:
+    using value_type = T;
+    static size_t allocation_count;
+    static size_t deallocation_count;
+    static size_t bytes_allocated;
+    
+    StatAllocator() = default;
+    template<typename U> StatAllocator(const StatAllocator<U>&) {}
+    
+    T* allocate(size_t n) {
+        allocation_count++;
+        bytes_allocated += n * sizeof(T);
+        std::cout << "     分配 " << n << " 个 " << typeid(T).name() 
+                  << " (" << n * sizeof(T) << " bytes)\n";
+        return static_cast<T*>(std::malloc(n * sizeof(T)));
+    }
+    
+    void deallocate(T* p, size_t n) {
+        deallocation_count++;
+        std::cout << "     释放 " << n << " 个 " << typeid(T).name() 
+                  << " (" << n * sizeof(T) << " bytes)\n";
+        std::free(p);
+    }
+    
+    template<typename U>
+    bool operator==(const StatAllocator<U>&) const { return true; }
+    
+    template<typename U>
+    bool operator!=(const StatAllocator<U>&) const { return false; }
+};
+
+template<typename T>
+size_t StatAllocator<T>::allocation_count = 0;
+template<typename T>
+size_t StatAllocator<T>::deallocation_count = 0;
+template<typename T>
+size_t StatAllocator<T>::bytes_allocated = 0;
 
 // 演示 vector 基本操作
 void demonstrate_basic_operations() {
@@ -206,47 +248,6 @@ void demonstrate_memory_management() {
     
     // 3. 自定义分配器示例
     std::cout << "\n3. 自定义分配器使用：\n";
-    
-    // 简单的统计分配器
-    template<typename T>
-    class StatAllocator {
-    public:
-        using value_type = T;
-        static size_t allocation_count;
-        static size_t deallocation_count;
-        static size_t bytes_allocated;
-        
-        StatAllocator() = default;
-        template<typename U> StatAllocator(const StatAllocator<U>&) {}
-        
-        T* allocate(size_t n) {
-            allocation_count++;
-            bytes_allocated += n * sizeof(T);
-            std::cout << "     分配 " << n << " 个 " << typeid(T).name() 
-                      << " (" << n * sizeof(T) << " bytes)\n";
-            return static_cast<T*>(std::malloc(n * sizeof(T)));
-        }
-        
-        void deallocate(T* p, size_t n) {
-            deallocation_count++;
-            std::cout << "     释放 " << n << " 个 " << typeid(T).name() 
-                      << " (" << n * sizeof(T) << " bytes)\n";
-            std::free(p);
-        }
-        
-        template<typename U>
-        bool operator==(const StatAllocator<U>&) const { return true; }
-        
-        template<typename U>
-        bool operator!=(const StatAllocator<U>&) const { return false; }
-    };
-    
-    template<typename T>
-    size_t StatAllocator<T>::allocation_count = 0;
-    template<typename T>
-    size_t StatAllocator<T>::deallocation_count = 0;
-    template<typename T>
-    size_t StatAllocator<T>::bytes_allocated = 0;
     
     {
         std::vector<int, StatAllocator<int>> stat_vec;

@@ -13,6 +13,101 @@
 #include <string>
 #include <functional>
 
+// 自定义Stack适配器实现
+template<typename T, typename Container = std::deque<T>>
+class MyStack {
+private:
+    Container container;
+    
+public:
+    using value_type = typename Container::value_type;
+    using size_type = typename Container::size_type;
+    
+    bool empty() const { return container.empty(); }
+    size_type size() const { return container.size(); }
+    
+    void push(const value_type& value) {
+        container.push_back(value);
+    }
+    
+    void pop() {
+        container.pop_back();
+    }
+    
+    value_type& top() {
+        return container.back();
+    }
+    
+    const value_type& top() const {
+        return container.back();
+    }
+};
+
+// 自定义PriorityQueue适配器实现  
+template<typename T, typename Container = std::vector<T>, 
+         typename Compare = std::less<typename Container::value_type>>
+class MyPriorityQueue {
+private:
+    Container container;
+    Compare comp;
+    
+public:
+    using value_type = typename Container::value_type;
+    using size_type = typename Container::size_type;
+    
+    MyPriorityQueue() = default;
+    explicit MyPriorityQueue(const Compare& compare) : comp(compare) {}
+    
+    bool empty() const { return container.empty(); }
+    size_type size() const { return container.size(); }
+    
+    const value_type& top() const {
+        return container.front();
+    }
+    
+    void push(const value_type& value) {
+        container.push_back(value);
+        std::push_heap(container.begin(), container.end(), comp);
+    }
+    
+    void pop() {
+        std::pop_heap(container.begin(), container.end(), comp);
+        container.pop_back();
+    }
+};
+
+// 限容队列实现
+template<typename T>
+class BoundedQueue {
+private:
+    std::queue<T> queue;
+    size_t max_size;
+    
+public:
+    BoundedQueue(size_t max_sz) : max_size(max_sz) {}
+    
+    bool push(const T& value) {
+        if (queue.size() >= max_size) {
+            return false;  // 队列已满
+        }
+        queue.push(value);
+        return true;
+    }
+    
+    bool pop(T& value) {
+        if (queue.empty()) {
+            return false;  // 队列为空
+        }
+        value = queue.front();
+        queue.pop();
+        return true;
+    }
+    
+    size_t size() const { return queue.size(); }
+    bool empty() const { return queue.empty(); }
+    bool full() const { return queue.size() >= max_size; }
+};
+
 void demonstrate_stack() {
     std::cout << "\n=== Stack 适配器 ===\n";
     
@@ -163,36 +258,6 @@ void demonstrate_priority_queue() {
 void demonstrate_adapter_principles() {
     std::cout << "\n=== 适配器实现原理 ===\n";
     
-    // 模拟 stack 的实现
-    template<typename T, typename Container = std::deque<T>>
-    class MyStack {
-    private:
-        Container container;
-        
-    public:
-        using value_type = typename Container::value_type;
-        using size_type = typename Container::size_type;
-        
-        bool empty() const { return container.empty(); }
-        size_type size() const { return container.size(); }
-        
-        void push(const value_type& value) {
-            container.push_back(value);
-        }
-        
-        void pop() {
-            container.pop_back();
-        }
-        
-        value_type& top() {
-            return container.back();
-        }
-        
-        const value_type& top() const {
-            return container.back();
-        }
-    };
-    
     std::cout << "自定义 Stack 测试:\n";
     MyStack<int> my_stack;
     
@@ -205,39 +270,6 @@ void demonstrate_adapter_principles() {
         std::cout << "pop: " << my_stack.top() << "\n";
         my_stack.pop();
     }
-    
-    // 模拟 priority_queue 的实现
-    template<typename T, typename Container = std::vector<T>, 
-             typename Compare = std::less<typename Container::value_type>>
-    class MyPriorityQueue {
-    private:
-        Container container;
-        Compare comp;
-        
-    public:
-        using value_type = typename Container::value_type;
-        using size_type = typename Container::size_type;
-        
-        MyPriorityQueue() = default;
-        explicit MyPriorityQueue(const Compare& compare) : comp(compare) {}
-        
-        bool empty() const { return container.empty(); }
-        size_type size() const { return container.size(); }
-        
-        const value_type& top() const {
-            return container.front();
-        }
-        
-        void push(const value_type& value) {
-            container.push_back(value);
-            std::push_heap(container.begin(), container.end(), comp);
-        }
-        
-        void pop() {
-            std::pop_heap(container.begin(), container.end(), comp);
-            container.pop_back();
-        }
-    };
     
     std::cout << "\n自定义 PriorityQueue 测试:\n";
     MyPriorityQueue<int> my_pq;
@@ -382,37 +414,6 @@ void demonstrate_practical_applications() {
     
     // 4. 限容队列
     std::cout << "\n4. 限容队列实现:\n";
-    
-    template<typename T>
-    class BoundedQueue {
-    private:
-        std::queue<T> queue;
-        size_t max_size;
-        
-    public:
-        BoundedQueue(size_t max_sz) : max_size(max_sz) {}
-        
-        bool push(const T& value) {
-            if (queue.size() >= max_size) {
-                return false;  // 队列已满
-            }
-            queue.push(value);
-            return true;
-        }
-        
-        bool pop(T& value) {
-            if (queue.empty()) {
-                return false;  // 队列为空
-            }
-            value = queue.front();
-            queue.pop();
-            return true;
-        }
-        
-        size_t size() const { return queue.size(); }
-        bool empty() const { return queue.empty(); }
-        bool full() const { return queue.size() >= max_size; }
-    };
     
     BoundedQueue<int> bounded_queue(3);
     
